@@ -12,7 +12,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Telephony;
 import android.telephony.SmsManager;
+
 import java.util.ArrayList;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.PluginResult;
@@ -44,8 +46,7 @@ public class Sms extends CordovaPlugin {
 				requestPermission();
 			}
 			return true;
-		}
-		else if (action.equals(ACTION_HAS_PERMISSION)) {
+		} else if (action.equals(ACTION_HAS_PERMISSION)) {
 			callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, hasPermission()));
 			return true;
 		}
@@ -96,12 +97,9 @@ public class Sms extends CordovaPlugin {
 					}
 					if (method.equalsIgnoreCase("INTENT")) {
 						invokeSMSIntent(phoneNumber, message);
-						// always passes success back to the app
-						callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
 					} else {
 						send(callbackContext, phoneNumber, message);
 					}
-					return;
 				} catch (JSONException ex) {
 					callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.JSON_EXCEPTION));
 				}
@@ -135,7 +133,8 @@ public class Sms extends CordovaPlugin {
 			sendIntent.putExtra("address", phoneNumber);
 			sendIntent.setData(Uri.parse("smsto:" + Uri.encode(phoneNumber)));
 		}
-		this.cordova.getActivity().startActivity(sendIntent);
+
+		cordova.startActivityForResult(this, sendIntent, 1337);
 	}
 
 	private void send(final CallbackContext callbackContext, String phoneNumber, String message) {
@@ -151,15 +150,15 @@ public class Sms extends CordovaPlugin {
 			@Override
 			public void onReceive(Context context, Intent intent) {
 				switch (getResultCode()) {
-				case SmsManager.STATUS_ON_ICC_SENT:
-				case Activity.RESULT_OK:
-					break;
-				case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
-				case SmsManager.RESULT_ERROR_NO_SERVICE:
-				case SmsManager.RESULT_ERROR_NULL_PDU:
-				case SmsManager.RESULT_ERROR_RADIO_OFF:
-					anyError = true;
-					break;
+					case SmsManager.STATUS_ON_ICC_SENT:
+					case Activity.RESULT_OK:
+						break;
+					case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
+					case SmsManager.RESULT_ERROR_NO_SERVICE:
+					case SmsManager.RESULT_ERROR_NULL_PDU:
+					case SmsManager.RESULT_ERROR_RADIO_OFF:
+						anyError = true;
+						break;
 				}
 				// trigger the callback only when all the parts have been sent
 				partsCount--;
@@ -187,9 +186,17 @@ public class Sms extends CordovaPlugin {
 				sentIntents.add(sentIntent);
 			}
 			manager.sendMultipartTextMessage(phoneNumber, null, parts, sentIntents, null);
-		}
-		else {
+		} else {
 			manager.sendTextMessage(phoneNumber, null, message, sentIntent, null);
 		}
+	}
+
+	@Override
+	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		// at last call sendPluginResult
+		callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
+
+		// when there is no direct result form your execute-method use sendPluginResult because most plugins I saw and made recently (Reminder) prefer sendPluginResult to success/error
+		// this.callbackContext.success(result.toString());
 	}
 }
