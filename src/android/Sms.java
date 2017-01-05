@@ -134,7 +134,9 @@ public class Sms extends CordovaPlugin {
 			sendIntent.setData(Uri.parse("smsto:" + Uri.encode(phoneNumber)));
 		}
 
-		cordova.startActivityForResult(this, sendIntent, 1337);
+		if (sendIntent.resolveActivity(cordova.getActivity().getPackageManager()) != null) {
+			cordova.startActivityForResult(this, sendIntent, 1337);
+		}
 	}
 
 	private void send(final CallbackContext callbackContext, String phoneNumber, String message) {
